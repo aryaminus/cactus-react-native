@@ -7,6 +7,7 @@ import {
   CactusFileSystem,
   CactusUtil,
 } from '../native';
+import { CactusConfig } from '../config/CactusConfig';
 
 export interface LogRecord {
   // Framework
@@ -44,6 +45,10 @@ export class Telemetry {
   };
 
   private static async handleLog(logRecord: LogRecord) {
+    if (!CactusConfig.isTelemetryEnabled) {
+      return;
+    }
+
     const logBufferPath = this.logBufferPaths[logRecord.event_type];
 
     let logs = [];
@@ -73,6 +78,10 @@ export class Telemetry {
   }
 
   public static async init(cactusTelemetryToken?: string): Promise<void> {
+    if (!CactusConfig.isTelemetryEnabled) {
+      return;
+    }
+
     this.cactusTelemetryToken = cactusTelemetryToken;
 
     const appIdentifier = await CactusDeviceInfo.getAppIdentifier();

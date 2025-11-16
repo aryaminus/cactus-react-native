@@ -205,8 +205,13 @@ interface CactusModel {
 
 ### Telemetry
 
+Cactus comes with powerful built-in telemetry that lets you monitor your projects. Create a token on the [Cactus dashboard](https://www.cactuscompute.com/dashboard) and get started with a one-line setup in your app
+
 ```typescript
 import { CactusConfig } from "cactus-react-native";
 
 CactusConfig.telemetryToken = "your-token-here";
+
+// Disable telemetry
+CactusConfig.isTelemetryEnabled = false;
 ```

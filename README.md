@@ -88,8 +88,9 @@ const App = () => {
 **`destroy(): Promise<void>`**
 - Frees resources
 
-**`getModels(): Promise<CactusModel[]>`**
-- Fetches available models from the database
+**`getModels(params?: CactusGetModelsParams): Promise<CactusModel[]>`**
+- Fetches available models and persists the results locally
+- `forceRefresh` - Forces a fetch from the server and updates the local data (default: false)
 
 ### useCactusLM Hook
 
@@ -110,7 +111,7 @@ const App = () => {
 - `stop(): Promise<void>`
 - `reset(): Promise<void>`
 - `destroy(): Promise<void>`
-- `getModels(): Promise<CactusModel[]>`
+- `getModels(params?: CactusGetModelsParams): Promise<CactusModel[]>`
 
 ## Type Definitions
 
@@ -207,6 +208,13 @@ interface CactusEmbeddingParams {
 ```typescript
 interface CactusEmbeddingResult {
   embedding: number[];
+}
+```
+
+### CactusGetModelsParams
+```typescript
+interface CactusGetModelsParams {
+  forceRefresh?: boolean;
 }
 ```
 

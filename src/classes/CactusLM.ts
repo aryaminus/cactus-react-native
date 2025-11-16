@@ -6,6 +6,7 @@ import type {
   CactusCompletionResult,
   CactusEmbeddingParams,
   CactusEmbeddingResult,
+  CactusGetModelsParams,
   CactusModel,
 } from '../types/CactusLM';
 import { Telemetry } from '../telemetry/Telemetry';
@@ -47,10 +48,7 @@ export class CactusLM {
     this.isDownloading = true;
     try {
       await CactusFileSystem.downloadModel(model, onProgress);
-      if (await CactusFileSystem.fileExists(CactusLM.modelsInfoPath)) {
-        await CactusFileSystem.deleteFile(CactusLM.modelsInfoPath);
-      }
-      await this.getModels();
+      await this.getModels({ forceRefresh: true });
     } finally {
       this.isDownloading = false;
     }
@@ -191,8 +189,13 @@ export class CactusLM {
     this.initialized = null;
   }
 
-  public async getModels(): Promise<CactusModel[]> {
-    if (await CactusFileSystem.fileExists(CactusLM.modelsInfoPath)) {
+  public async getModels({
+    forceRefresh = false,
+  }: CactusGetModelsParams = {}): Promise<CactusModel[]> {
+    if (
+      !forceRefresh &&
+      (await CactusFileSystem.fileExists(CactusLM.modelsInfoPath))
+    ) {
       try {
         return JSON.parse(
           await CactusFileSystem.readFile(CactusLM.modelsInfoPath)

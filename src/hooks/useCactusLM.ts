@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CactusLM } from '../classes/CactusLM';
 import type {
   CactusCompletionParams,
@@ -6,12 +6,14 @@ import type {
   CactusDownloadParams,
   CactusEmbeddingParams,
   CactusEmbeddingResult,
+  CactusGetModelsParams,
   CactusInitParams,
+  CactusModel,
 } from '../types/CactusLM';
 import { getErrorMessage } from '../utils/error';
 
 export const useCactusLM = () => {
-  const cactusLMRef = useRef(new CactusLM());
+  const [cactusLM] = useState(() => new CactusLM());
 
   // State
   const [completion, setCompletion] = useState('');
@@ -21,22 +23,20 @@ export const useCactusLM = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const cactusLM = cactusLMRef.current;
-
     return () => {
       (async () => {
         await cactusLM.stop();
         await cactusLM.destroy();
       })();
     };
-  }, []);
+  }, [cactusLM]);
 
   const download = useCallback(
     async ({ model, onProgress }: CactusDownloadParams = {}) => {
       setError(null);
 
       try {
-        await cactusLMRef.current.download({
+        await cactusLM.download({
           model,
           onProgress: (progress) => {
             setDownloadProgress(progress);
@@ -48,7 +48,7 @@ export const useCactusLM = () => {
         throw e;
       }
     },
-    []
+    [cactusLM]
   );
 
   const init = useCallback(
@@ -57,14 +57,14 @@ export const useCactusLM = () => {
 
       setIsInitialized(false);
       try {
-        await cactusLMRef.current.init({ model, contextSize });
+        await cactusLM.init({ model, contextSize });
         setIsInitialized(true);
       } catch (e) {
         setError(getErrorMessage(e));
         throw e;
       }
     },
-    []
+    [cactusLM]
   );
 
   const complete = useCallback(
@@ -84,12 +84,14 @@ export const useCactusLM = () => {
 
       setError(null);
 
-      await init({ model, contextSize });
+      if (!isInitialized || model !== undefined || contextSize !== undefined) {
+        await init({ model, contextSize });
+      }
 
       setCompletion('');
       setIsGenerating(true);
       try {
-        return await cactusLMRef.current.complete({
+        return await cactusLM.complete({
           messages,
           options,
           tools,
@@ -107,7 +109,7 @@ export const useCactusLM = () => {
         setIsGenerating(false);
       }
     },
-    [init, isGenerating]
+    [cactusLM, init, isGenerating, isInitialized]
   );
 
   const embed = useCallback(
@@ -123,11 +125,13 @@ export const useCactusLM = () => {
 
       setError(null);
 
-      await init({ model });
+      if (!isInitialized || model !== undefined) {
+        await init({ model });
+      }
 
       setIsGenerating(true);
       try {
-        return await cactusLMRef.current.embed({ text, model });
+        return await cactusLM.embed({ text, model });
       } catch (e) {
         setError(getErrorMessage(e));
         throw e;
@@ -135,20 +139,20 @@ export const useCactusLM = () => {
         setIsGenerating(false);
       }
     },
-    [init, isGenerating]
+    [cactusLM, init, isGenerating, isInitialized]
   );
 
   const stop = useCallback(async () => {
     setError(null);
 
     try {
-      await cactusLMRef.current.stop();
+      await cactusLM.stop();
       setIsGenerating(false);
     } catch (e) {
       setError(getErrorMessage(e));
       throw e;
     }
-  }, []);
+  }, [cactusLM]);
 
   const reset = useCallback(async () => {
     setError(null);
@@ -156,12 +160,12 @@ export const useCactusLM = () => {
     await stop();
 
     try {
-      await cactusLMRef.current.reset();
+      await cactusLM.reset();
     } catch (e) {
       setError(getErrorMessage(e));
       throw e;
     }
-  }, [stop]);
+  }, [cactusLM, stop]);
 
   const destroy = useCallback(async () => {
     setError(null);
@@ -169,24 +173,29 @@ export const useCactusLM = () => {
     await stop();
 
     try {
-      await cactusLMRef.current.destroy();
+      await cactusLM.destroy();
       setIsInitialized(false);
     } catch (e) {
       setError(getErrorMessage(e));
       throw e;
     }
-  }, [stop]);
+  }, [cactusLM, stop]);
 
-  const getModels = useCallback(async () => {
-    setError(null);
+  const getModels = useCallback(
+    async ({ forceRefresh }: CactusGetModelsParams = {}): Promise<
+      CactusModel[]
+    > => {
+      setError(null);
 
-    try {
-      return await cactusLMRef.current.getModels();
-    } catch (e) {
-      setError(getErrorMessage(e));
-      throw e;
-    }
-  }, []);
+      try {
+        return await cactusLM.getModels({ forceRefresh });
+      } catch (e) {
+        setError(getErrorMessage(e));
+        throw e;
+      }
+    },
+    [cactusLM]
+  );
 
   return {
     completion,

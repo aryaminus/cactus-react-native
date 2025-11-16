@@ -67,6 +67,10 @@ export interface CactusEmbeddingResult {
   embedding: number[];
 }
 
+export interface CactusGetModelsParams {
+  forceRefresh?: boolean;
+}
+
 export interface CactusModel {
   // API
   name: string;

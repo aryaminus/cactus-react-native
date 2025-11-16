@@ -15,6 +15,7 @@ export type {
   CactusCompletionResult,
   CactusEmbeddingParams,
   CactusEmbeddingResult,
+  CactusGetModelsParams,
   CactusModel,
 } from './types/CactusLM';
 

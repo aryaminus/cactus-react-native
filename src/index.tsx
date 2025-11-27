@@ -21,3 +21,5 @@ export type {
 
 // Config
 export { CactusConfig } from './config/CactusConfig';
+// Native
+export { CactusImage } from './native/CactusImage';

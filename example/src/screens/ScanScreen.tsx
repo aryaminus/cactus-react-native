@@ -17,8 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCactusLM } from 'cactus-react-native';
-import ImageResizer from '@bam.tech/react-native-image-resizer';
+import { useCactusLM, CactusImage } from 'cactus-react-native';
 import Share from 'react-native-share';
 import { ImageRedactor } from '../services/ImageRedactor';
 import {
@@ -346,13 +345,30 @@ export const ScanScreen = ({ route, navigation }: Props) => {
           );
         }
 
-        const resized = await ImageResizer.createResizedImage(
-          targetUri,
-          imageResolution,
-          imageResolution,
-          'JPEG',
-          90
-        );
+        // Resize image if needed
+        let finalUri = targetUri;
+        if (imageResolution < 512) {
+          try {
+            console.log(
+              `[ScanScreen] Resizing image to ${imageResolution}x${imageResolution}...`
+            );
+            // Use CactusImage for resizing
+            finalUri = await CactusImage.resize(
+              targetUri.replace('file://', ''),
+              imageResolution,
+              imageResolution,
+              0.8
+            );
+            // Ensure file:// prefix
+            if (!finalUri.startsWith('file://')) {
+              finalUri = `file://${finalUri}`;
+            }
+            console.log('[ScanScreen] Image resized:', finalUri);
+          } catch (resizeError) {
+            console.error('[ScanScreen] Resize failed:', resizeError);
+            // Fallback to original image
+          }
+        }
 
         // Stage 1: Description
         const describePrompt = `You are an expert document analyzer. Analyze this image thoroughly:
@@ -386,7 +402,7 @@ If this is a nature photo or object without any personal information, state that
               {
                 role: 'user',
                 content: describePrompt,
-                images: [resized.uri.replace('file://', '')],
+                images: [finalUri.replace('file://', '')],
               },
             ],
           });
@@ -1047,13 +1063,31 @@ If this is a nature photo or object without any personal information, state that
       if (isVisualQuestion(message)) {
         console.log('[Chat] Visual question detected, using vision model');
         // Use vision model for visual questions
-        const resized = await ImageResizer.createResizedImage(
-          currentImage,
-          imageResolution,
-          imageResolution,
-          'JPEG',
-          90
-        );
+
+        // Resize image if needed
+        let finalUri = currentImage; // Assuming currentImage is the targetUri
+        if (imageResolution < 512) {
+          try {
+            console.log(
+              `[ScanScreen] Resizing image to ${imageResolution}x${imageResolution}...`
+            );
+            // Use CactusImage for resizing
+            finalUri = await CactusImage.resize(
+              currentImage.replace('file://', ''), // Use currentImage as the source
+              imageResolution,
+              imageResolution,
+              0.8
+            );
+            // Ensure file:// prefix
+            if (!finalUri.startsWith('file://')) {
+              finalUri = `file://${finalUri}`;
+            }
+            console.log('[ScanScreen] Image resized:', finalUri);
+          } catch (resizeError) {
+            console.error('[ScanScreen] Resize failed:', resizeError);
+            // Fallback to original image
+          }
+        }
 
         response = await visionLM.complete({
           messages: [
@@ -1065,7 +1099,7 @@ If this is a nature photo or object without any personal information, state that
             {
               role: 'user',
               content: message,
-              images: [resized.uri.replace('file://', '')],
+              images: [finalUri.replace('file://', '')], // Use finalUri here
             },
           ],
         });

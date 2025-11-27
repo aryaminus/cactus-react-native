@@ -1,214 +1,135 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-} from 'react-native';
-import CompletionScreen from './CompletionScreen';
-import VisionScreen from './VisionScreen';
-import ToolCallingScreen from './ToolCallingScreen';
-import RAGScreen from './RAGScreen';
-import EmbeddingScreen from './EmbeddingScreen';
-import ChatScreen from './ChatScreen';
-import PerformanceScreen from './PerformanceScreen';
+import React, { useEffect } from 'react';
+import { Linking, Platform, DeviceEventEmitter } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { HomeScreen } from './screens/HomeScreen';
+import { ScanScreen } from './screens/ScanScreen';
+import { useTheme } from './theme';
 
-type Screen =
-  | 'Home'
-  | 'Completion'
-  | 'Vision'
-  | 'ToolCalling'
-  | 'RAG'
-  | 'Embedding'
-  | 'Chat'
-  | 'Performance';
+const Stack = createNativeStackNavigator();
 
-const App = () => {
-  const [selectedScreen, setSelectedScreen] = useState<Screen>('Home');
+function App(props: any): React.JSX.Element {
+  const navigationRef = React.useRef<any>(null);
+  const theme = useTheme();
 
-  const handleGoHome = () => {
-    setSelectedScreen('Home');
-  };
-
-  const handleGoToCompletion = () => {
-    setSelectedScreen('Completion');
-  };
-
-  const handleGoToVision = () => {
-    setSelectedScreen('Vision');
-  };
-
-  const handleGoToToolCalling = () => {
-    setSelectedScreen('ToolCalling');
-  };
-
-  const handleGoToRAG = () => {
-    setSelectedScreen('RAG');
-  };
-
-  const handleGoToEmbedding = () => {
-    setSelectedScreen('Embedding');
-  };
-
-  const handleGoToChat = () => {
-    setSelectedScreen('Chat');
-  };
-
-  const handleGoToPerformance = () => {
-    setSelectedScreen('Performance');
-  };
-
-  const renderScreen = () => {
-    switch (selectedScreen) {
-      case 'Completion':
-        return <CompletionScreen />;
-      case 'Vision':
-        return <VisionScreen />;
-      case 'ToolCalling':
-        return <ToolCallingScreen />;
-      case 'RAG':
-        return <RAGScreen />;
-      case 'Embedding':
-        return <EmbeddingScreen />;
-      case 'Chat':
-        return <ChatScreen />;
-      case 'Performance':
-        return <PerformanceScreen />;
-      default:
-        return null;
+  useEffect(() => {
+    // Check for initialProps (Android Cold Start)
+    // @ts-ignore - Props are passed from native
+    const initialSharedImage = (props as any)?.sharedImageUri;
+    if (initialSharedImage && Platform.OS === 'android') {
+      console.log('[App] Found initial shared image:', initialSharedImage);
+      setTimeout(() => {
+        navigationRef.current?.navigate('Scan', {
+          imageUri: initialSharedImage.startsWith('content://')
+            ? initialSharedImage
+            : `file://${initialSharedImage}`,
+        });
+      }, 500); // Wait for navigation to mount
     }
-  };
 
-  if (selectedScreen !== 'Home') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoHome}>
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-        </View>
-        {renderScreen()}
-      </SafeAreaView>
-    );
-  }
+    // iOS Deep Link Handler (from Share Extension)
+    const handleDeepLink = (event: { url: string }) => {
+      const url = event.url;
+      console.log('[DeepLink] Received:', url);
+
+      if (url.startsWith('screensafe://scan')) {
+        // Parse URL parameters
+        const params = new URLSearchParams(url.split('?')[1]);
+        const imageUri = params.get('image');
+
+        if (imageUri && navigationRef.current) {
+          const decodedUri = decodeURIComponent(imageUri);
+          console.log('[DeepLink] Navigating to Scan with:', decodedUri);
+
+          // Small delay to ensure navigation is ready
+          setTimeout(() => {
+            navigationRef.current?.navigate('Scan', {
+              imageUri: decodedUri.startsWith('file://')
+                ? decodedUri
+                : `file://${decodedUri}`,
+            });
+          }, 100);
+        }
+      }
+    };
+
+    // Android Share Intent Handler (Warm Start)
+    const handleAndroidShare = (data: any) => {
+      const imageUri = typeof data === 'string' ? data : data?.imageUri;
+      console.log('[ShareIntent] Received:', imageUri);
+
+      if (imageUri && navigationRef.current) {
+        setTimeout(() => {
+          navigationRef.current?.navigate('Scan', {
+            imageUri:
+              imageUri.startsWith('file://') ||
+              imageUri.startsWith('content://')
+                ? imageUri
+                : `file://${imageUri}`,
+          });
+        }, 100);
+      }
+    };
+
+    // Set up iOS linking listener
+    const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check for initial URL (app opened via deep link)
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    // Set up Android event listener
+    let androidSubscription: any;
+    if (Platform.OS === 'android') {
+      androidSubscription = DeviceEventEmitter.addListener(
+        'onSharedImage',
+        handleAndroidShare
+      );
+    }
+
+    // Cleanup
+    return () => {
+      linkingSubscription.remove();
+      if (androidSubscription) {
+        androidSubscription.remove();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Cactus</Text>
-
-        <ScrollView style={styles.scrollView}>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handleGoToCompletion}
-          >
-            <Text style={styles.menuButtonTitle}>Completion</Text>
-            <Text style={styles.menuButtonDescription}>
-              Generate text with streaming
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handleGoToVision}
-          >
-            <Text style={styles.menuButtonTitle}>Vision</Text>
-            <Text style={styles.menuButtonDescription}>Analyze images</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handleGoToToolCalling}
-          >
-            <Text style={styles.menuButtonTitle}>Tool Calling</Text>
-            <Text style={styles.menuButtonDescription}>Function calls</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuButton} onPress={handleGoToRAG}>
-            <Text style={styles.menuButtonTitle}>RAG</Text>
-            <Text style={styles.menuButtonDescription}>
-              Document-based answers
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handleGoToEmbedding}
-          >
-            <Text style={styles.menuButtonTitle}>Embedding</Text>
-            <Text style={styles.menuButtonDescription}>Text to vectors</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuButton} onPress={handleGoToChat}>
-            <Text style={styles.menuButtonTitle}>Chat</Text>
-            <Text style={styles.menuButtonDescription}>
-              Multi-turn conversation
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handleGoToPerformance}
-          >
-            <Text style={styles.menuButtonTitle}>Performance</Text>
-            <Text style={styles.menuButtonDescription}>
-              Direct CactusLM class usage
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+    <NavigationContainer ref={navigationRef}>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: theme.colors.primary,
+          },
+          headerTintColor: theme.colors.textInverse,
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.bold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+          headerShadowVisible: true,
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: 'ScreenSafe' }}
+        />
+        <Stack.Screen
+          name="Scan"
+          component={ScanScreen}
+          options={{ title: 'Scanning...' }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
-};
+}
 
 export default App;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    textAlign: 'center',
-    color: '#000',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  menuButton: {
-    padding: 12,
-    backgroundColor: '#f3f3f3',
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  menuButtonTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  menuButtonDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  header: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#000',
-  },
-});

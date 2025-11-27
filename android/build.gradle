@@ -34,7 +34,7 @@ android {
   namespace "com.margelo.nitro.cactus"
 
   compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
-  ndkVersion "27.1.12297006"
+  ndkVersion getExtOrDefault("ndkVersion")
 
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")

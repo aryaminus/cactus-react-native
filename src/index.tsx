@@ -2,7 +2,6 @@
 export { CactusLM } from './classes/CactusLM';
 export { CactusImage } from './native/CactusImage';
 
-
 // Hooks
 export { useCactusLM } from './hooks/useCactusLM';
 

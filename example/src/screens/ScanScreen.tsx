@@ -88,10 +88,17 @@ export const ScanScreen = ({ route, navigation }: Props) => {
 
   // Dynamic resolution based on device capability
   const [imageResolution, setImageResolution] = useState(512);
+  const [contextSize, setContextSize] = useState(1024);
 
-  // Models
-  const visionLM = useCactusLM({ model: 'lfm2-vl-450m' });
-  const textLM = useCactusLM({ model: 'qwen3-0.6' });
+  // Models with dynamic context sizing
+  const visionLM = useCactusLM({
+    model: 'lfm2-vl-450m',
+    contextSize: contextSize,
+  });
+  const textLM = useCactusLM({
+    model: 'qwen3-0.6',
+    contextSize: Math.min(contextSize, 512), // Text model needs less context
+  });
 
   // Settings
   const [settings, setSettings] = useState<AppSettings>({
@@ -144,25 +151,29 @@ export const ScanScreen = ({ route, navigation }: Props) => {
 
       if (isVeryOldDevice) {
         setImageResolution(256);
+        setContextSize(256);
         console.log(
-          '[ScanScreen] Very old device detected (Android < 7), using 256px resolution'
+          '[ScanScreen] Very old device detected (Android < 7), using 256px resolution, 256 context'
         );
       } else if (isLowEndDevice || isOldIOS) {
         setImageResolution(384);
+        setContextSize(512);
         console.log(
-          '[ScanScreen] Low-end device detected, using 384px resolution'
+          '[ScanScreen] Low-end device detected, using 384px resolution, 512 context'
         );
       } else {
         setImageResolution(512);
+        setContextSize(1024);
         console.log(
-          '[ScanScreen] Modern device detected, using optimal 512px resolution'
+          '[ScanScreen] Modern device detected, using optimal 512px resolution, 1024 context'
         );
       }
     } catch (error) {
       console.warn(
-        '[ScanScreen] Device detection failed, using conservative 384px'
+        '[ScanScreen] Device detection failed, using conservative 384px, 512 context'
       );
       setImageResolution(384); // Conservative default on error
+      setContextSize(512);
     }
   };
 
@@ -181,6 +192,15 @@ export const ScanScreen = ({ route, navigation }: Props) => {
   // Detect device memory and adjust resolution (run once)
   useEffect(() => {
     checkDeviceMemory();
+  }, []);
+
+  // Memory Management: Cleanup models on unmount (Performance Tip from README)
+  useEffect(() => {
+    return () => {
+      console.log('[ScanScreen] Component unmounting - cleaning up models');
+      // Cleanup is handled automatically by useCactusLM hooks
+      // Models will call destroy() internally when component unmounts
+    };
   }, []);
 
   // Initialize HybridInference
@@ -237,11 +257,33 @@ export const ScanScreen = ({ route, navigation }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visionLM.isGenerating, textLM.isGenerating, messageQueue.pending.length]);
 
-  // Auto-download models
+  // Auto-download models (run once on mount)
   useEffect(() => {
-    if (!visionLM.isDownloaded) visionLM.download();
-    if (!textLM.isDownloaded) textLM.download();
-  }, [visionLM.isDownloaded, textLM.isDownloaded, visionLM, textLM]);
+    const downloadModels = async () => {
+      try {
+        if (!visionLM.isDownloaded) {
+          console.log('[Models] Downloading vision model...');
+          await visionLM.download({
+            onProgress: (p) => console.log(`[Vision] ${Math.round(p * 100)}%`),
+          });
+        }
+
+        if (!textLM.isDownloaded) {
+          console.log('[Models] Downloading text model...');
+          await textLM.download({
+            onProgress: (p) => console.log(`[Text] ${Math.round(p * 100)}%`),
+          });
+        }
+
+        console.log('[Models] All models ready');
+      } catch (error) {
+        console.error('[Models] Download failed:', error);
+      }
+    };
+
+    downloadModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   // Scan a specific image and save results
   const performScanForImage = React.useCallback(
@@ -495,6 +537,19 @@ If this is a nature photo or object without any personal information, state that
             description,
             currentSettings.allowCloud
           );
+
+          // Check if analysis returned low confidence due to memory issues
+          if (piiResult.confidence === 'low' && !currentSettings.allowCloud) {
+            console.log(
+              '[Scan] Low confidence result - likely due to memory constraints'
+            );
+            addMessage({
+              type: 'system',
+              content:
+                '⚠️ Limited analysis (device memory constrained). Enable cloud mode in settings for full PII detection.',
+              status: 'complete',
+            });
+          }
         } catch (textError) {
           console.error('[Scan] Text/Hybrid model error:', textError);
 
@@ -860,7 +915,8 @@ If this is a nature photo or object without any personal information, state that
         urls: imagesToShare.map((uri: string) =>
           uri.startsWith('file://') ? uri : `file://${uri}`
         ),
-        message,
+        type: 'image/*',
+        title: message, // Use title instead of message to avoid text-only sharing
       });
     } catch (error) {
       if (
@@ -1180,14 +1236,13 @@ Answer briefly and helpfully based on the image analysis above.`
       }
 
       await Share.open({
-        urls: [
-          imageToShare.startsWith('file://')
+        url: imageToShare.startsWith('file://')
+          ? imageToShare
+          : imageToShare.startsWith('data:')
             ? imageToShare
-            : imageToShare.startsWith('data:')
-              ? imageToShare
-              : `file://${imageToShare}`,
-        ],
-        message,
+            : `file://${imageToShare}`,
+        type: 'image/*',
+        title: message, // Move message to title to avoid text sharing
       });
     } catch (error) {
       // User cancelled or error occurred

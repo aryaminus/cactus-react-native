@@ -192,11 +192,13 @@ Think step-by-step:
             }
           }
 
-          // CRITICAL: Enforce consistency - if hasPII is false, ignore any hallucinated types
-          // This fixes LLM bugs like: {"hasPII": false, "types": ["credit_card"], "count": 1}
-          const hasPII = parsed.hasPII === true && types.length > 0;
-          if (!hasPII) {
-            types = []; // Force empty if no PII detected
+          // CRITICAL FIX: If types exist, hasPII MUST be true (prioritize types over LLM  response)
+          // This fixes LLM bugs like: {"hasPII": false, "types": ["SSN"], "count": 1}
+          let hasPII = types.length > 0 || parsed.hasPII === true;
+
+          // But if hasPII=true and no types, trust types array (hasPII should be false)
+          if (types.length === 0) {
+            hasPII = false;
           }
 
           console.log('[PIIDetector] Final validated result:', {

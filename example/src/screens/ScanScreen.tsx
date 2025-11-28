@@ -15,6 +15,8 @@ import {
   Switch,
   ScrollView,
   Linking,
+  type StyleProp,
+  type TextStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -1324,13 +1326,44 @@ Answer briefly and helpfully based on the image analysis above.`
     }
   };
 
+  // Helper to render text with bold formatting and remove <think> tags
+  const renderFormattedText = (
+    text: string,
+    baseStyle: StyleProp<TextStyle>
+  ) => {
+    if (!text) return null;
+
+    // 1. Remove <think> tags and content
+    const cleanedText = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // 2. Split by ** for bold
+    const parts = cleanedText.split(/(\*\*.*?\*\*)/g);
+
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <Text key={index} style={[baseStyle, { fontWeight: 'bold' }]}>
+            {part.slice(2, -2)}
+          </Text>
+        );
+      }
+      return (
+        <Text key={index} style={baseStyle}>
+          {part}
+        </Text>
+      );
+    });
+  };
+
   // Render message card
   const renderMessage = ({ item }: { item: FeedMessage }) => {
     if (item.type === 'user') {
       return (
         <View style={styles.userMessageContainer}>
           <View style={styles.userBubble}>
-            <Text style={styles.userText}>{item.content}</Text>
+            <Text style={styles.userText}>
+              {renderFormattedText(item.content, styles.userText)}
+            </Text>
           </View>
           <View style={styles.messageActions}>
             {item.isEditable && (
@@ -1385,7 +1418,10 @@ Answer briefly and helpfully based on the image analysis above.`
                 { color: currentTheme.colors.textPrimary },
               ]}
             >
-              {item.content}
+              {renderFormattedText(item.content, [
+                styles.stage1Text,
+                { color: currentTheme.colors.textPrimary },
+              ])}
             </Text>
           </View>
         </View>
@@ -1557,7 +1593,11 @@ Answer briefly and helpfully based on the image analysis above.`
             isError && { color: currentTheme.colors.error },
           ]}
         >
-          {item.content}
+          {renderFormattedText(item.content, [
+            styles.systemText,
+            { color: currentTheme.colors.textSecondary },
+            isError && { color: currentTheme.colors.error },
+          ])}
         </Text>
         {isError && (
           <TouchableOpacity

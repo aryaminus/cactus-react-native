@@ -7,7 +7,8 @@ import type {
   CactusLMCompleteResult,
   CactusLMEmbedParams,
   CactusLMEmbedResult,
-  CactusLMGetModelsParams,
+  CactusLMImageEmbedParams,
+  CactusLMImageEmbedResult,
   CactusLMCompleteParams,
   CactusLMDownloadParams,
 } from '../types/CactusLM';
@@ -222,6 +223,30 @@ export const useCactusLM = ({
     [cactusLM, isGenerating]
   );
 
+  const imageEmbed = useCallback(
+    async ({
+      imagePath,
+    }: CactusLMImageEmbedParams): Promise<CactusLMImageEmbedResult> => {
+      if (isGenerating) {
+        const message = 'CactusLM is already generating';
+        setError(message);
+        throw new Error(message);
+      }
+
+      setError(null);
+      setIsGenerating(true);
+      try {
+        return await cactusLM.imageEmbed({ imagePath });
+      } catch (e) {
+        setError(getErrorMessage(e));
+        throw e;
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [cactusLM, isGenerating]
+  );
+
   const stop = useCallback(async () => {
     setError(null);
     try {
@@ -256,20 +281,15 @@ export const useCactusLM = ({
     }
   }, [cactusLM]);
 
-  const getModels = useCallback(
-    async ({ forceRefresh }: CactusLMGetModelsParams = {}): Promise<
-      CactusModel[]
-    > => {
-      setError(null);
-      try {
-        return await cactusLM.getModels({ forceRefresh });
-      } catch (e) {
-        setError(getErrorMessage(e));
-        throw e;
-      }
-    },
-    [cactusLM]
-  );
+  const getModels = useCallback(async (): Promise<CactusModel[]> => {
+    setError(null);
+    try {
+      return await cactusLM.getModels();
+    } catch (e) {
+      setError(getErrorMessage(e));
+      throw e;
+    }
+  }, [cactusLM]);
 
   return {
     completion,
@@ -284,6 +304,7 @@ export const useCactusLM = ({
     init,
     complete,
     embed,
+    imageEmbed,
     reset,
     stop,
     destroy,

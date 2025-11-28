@@ -12,12 +12,16 @@ import {
   useCactusLM,
   type Message,
   type CactusLMCompleteResult,
+  type CactusLMEmbedResult,
 } from 'cactus-react-native';
 
 const CompletionScreen = () => {
   const cactusLM = useCactusLM({ model: 'qwen3-0.6' });
   const [input, setInput] = useState('What is the capital of France?');
   const [result, setResult] = useState<CactusLMCompleteResult | null>(null);
+  const [embedResult, setEmbedResult] = useState<CactusLMEmbedResult | null>(
+    null
+  );
 
   useEffect(() => {
     if (!cactusLM.isDownloaded) {
@@ -37,6 +41,10 @@ const CompletionScreen = () => {
     ];
     const completionResult = await cactusLM.complete({ messages });
     setResult(completionResult);
+  };
+
+  const handleEmbed = async () => {
+    setEmbedResult(await cactusLM.embed({ text: input }));
   };
 
   const handleStop = () => {
@@ -85,6 +93,14 @@ const CompletionScreen = () => {
           <Text style={styles.buttonText}>
             {cactusLM.isGenerating ? 'Completing...' : 'Complete'}
           </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleEmbed}
+          disabled={cactusLM.isGenerating}
+        >
+          <Text style={styles.buttonText}>Embed</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.button} onPress={handleStop}>
@@ -167,6 +183,26 @@ const CompletionScreen = () => {
               totalTokens:
             </Text>
             <Text style={styles.resultFieldValue}>{result.totalTokens}</Text>
+          </View>
+        </View>
+      )}
+
+      {embedResult && (
+        <View style={styles.resultContainer}>
+          <Text style={styles.resultLabel}>CactusLMEmbedResult:</Text>
+          <View style={styles.resultBox}>
+            <Text style={styles.resultFieldLabel}>embedding:</Text>
+            <ScrollView horizontal>
+              <Text style={styles.resultFieldValue}>
+                [
+                {embedResult.embedding
+                  .slice(0, 20)
+                  .map((v) => v.toFixed(4))
+                  .join(', ')}
+                {embedResult.embedding.length > 20 ? ', ...' : ''}] (length:{' '}
+                {embedResult.embedding.length})
+              </Text>
+            </ScrollView>
           </View>
         </View>
       )}

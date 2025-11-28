@@ -38,8 +38,9 @@ Think step-by-step:
 3. Are there faces, signatures, or identifying features mentioned?
 4. What is your confidence level based on the description detail?
 
-    Respond with ONLY valid JSON (no markdown, no code blocks). Do not use trailing commas.
+    Respond with ONLY valid JSON (no markdown, no code blocks). Do not use trailing commas. Ensure all string values are quoted.
     Format: {"hasPII":boolean,"confidence":"high"|"medium"|"low","types":["type1","type2"],"count":number}
+    IMPORTANT: "confidence" must be a STRING, not an object.
     
     Rules:
 - If description is vague or uncertain, use "low" confidence (triggers cloud fallback)
@@ -131,9 +132,14 @@ Think step-by-step:
             /"hasPII":\s*"([^"]+)"/g,
             '"hasPII": $1'
           );
-          // 4. Fix quotes around confidence values
+          // 4. Fix quotes around confidence values (ensure they are quoted)
+          // First, handle nested confidence objects (e.g. "confidence": { ... }) -> "confidence": "low"
           jsonString = jsonString.replace(
-            /"confidence":\s*"([^"]+)"/g,
+            /"confidence":\s*\{[^}]+\}/g,
+            '"confidence": "low"'
+          );
+          jsonString = jsonString.replace(
+            /"confidence":\s*"?([a-zA-Z]+)"?/g,
             '"confidence": "$1"'
           );
           // 5. Clean type values: remove colons and extra spaces (e.g. "credit_card: " -> "credit_card")

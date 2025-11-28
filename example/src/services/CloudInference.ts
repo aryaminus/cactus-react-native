@@ -48,12 +48,19 @@ export class CloudInference {
     apiKey?: string
   ) {
     try {
+      console.log('[Cloud] 🔧 Configuring cloud service:', {
+        baseUrl: this.baseUrl,
+        provider,
+        model,
+        hasApiKey: !!apiKey,
+      });
       await this.fetchWithTimeout(`${this.baseUrl}/configure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, model, api_key: apiKey }),
       });
       this.isConfigured = true;
+      console.log('[Cloud] ✅ Configuration successful');
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -115,13 +122,14 @@ Rules:
   }
 
   async analyzeDescription(description: string): Promise<any> {
+    console.log('[Cloud] 🚀 CLOUD ANALYSIS STARTING');
     if (!this.isConfigured) {
       await this.configure();
       await this.registerPIISignature();
     }
 
     try {
-      console.log('[Cloud] Sending request to:', this.baseUrl);
+      console.log('[Cloud] 📤 Sending request to:', this.baseUrl);
 
       // Create a PII-specific question for the QA signature
       const piiQuestion = `Analyze this image description for Personally Identifiable Information (PII):
@@ -154,8 +162,8 @@ Return ONLY the JSON, no other text.`;
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            signature_name: 'qa',
-            inputs: { question: piiQuestion },
+            signature_name: 'pii_detection',
+            inputs: { description: piiQuestion },
           }),
         },
         45000
@@ -171,60 +179,67 @@ Return ONLY the JSON, no other text.`;
       console.log('[Cloud] Raw response:', data);
 
       // Handle different response formats from your server
-      if (data.answer) {
-        // Server returns { answer: "..." } format
-        let answer = data.answer.trim();
+      let answer = '';
 
-        // Try to extract JSON from the answer
-        try {
-          // First try: direct parse
-          return JSON.parse(answer);
-        } catch {
-          // Second try: extract JSON from markdown code blocks
-          const jsonMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-          if (jsonMatch) {
-            try {
-              return JSON.parse(jsonMatch[1]);
-            } catch (e) {
-              console.warn('[Cloud] Failed to parse JSON from markdown:', e);
-            }
-          }
-
-          // Third try: find JSON object in text
-          const jsonObjMatch = answer.match(/\{[^{}]*"hasPII"[^{}]*\}/);
-          if (jsonObjMatch) {
-            try {
-              return JSON.parse(jsonObjMatch[0]);
-            } catch (e) {
-              console.warn('[Cloud] Failed to parse extracted JSON:', e);
-            }
-          }
-
-          // Fallback: analyze text for PII keywords
-          console.warn(
-            '[Cloud] Could not parse JSON, using text analysis fallback'
-          );
-          const lowerAnswer = answer.toLowerCase();
-          const hasPII =
-            lowerAnswer.includes('haspii": true') ||
-            lowerAnswer.includes('social security') ||
-            lowerAnswer.includes('credit card') ||
-            lowerAnswer.includes('"ssn"') ||
-            lowerAnswer.includes('pii detected');
-
-          return {
-            hasPII,
-            confidence: hasPII ? 'medium' : 'low',
-            types: hasPII ? ['ssn'] : [],
-            count: hasPII ? 1 : 0,
-          };
-        }
+      if (data.pii_json) {
+        // pii_detection signature returns { pii_json: "..." } format
+        answer = data.pii_json;
+      } else if (data.answer) {
+        // qa signature returns { answer: "..." } format
+        answer = data.answer;
       } else if (data.prediction) {
         // If server returns { prediction: {...} } format
         return data.prediction;
       } else {
         // Direct response format
         return data;
+      }
+
+      answer = answer.trim();
+
+      // Try to extract JSON from the answer
+      try {
+        // First try: direct parse
+        return JSON.parse(answer);
+      } catch {
+        // Second try: extract JSON from markdown code blocks
+        const jsonMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            return JSON.parse(jsonMatch[1]);
+          } catch (e) {
+            console.warn('[Cloud] Failed to parse JSON from markdown:', e);
+          }
+        }
+
+        // Third try: find JSON object in text
+        const jsonObjMatch = answer.match(/\{[^{}]*"hasPII"[^{}]*\}/);
+        if (jsonObjMatch) {
+          try {
+            return JSON.parse(jsonObjMatch[0]);
+          } catch (e) {
+            console.warn('[Cloud] Failed to parse extracted JSON:', e);
+          }
+        }
+
+        // Fallback: analyze text for PII keywords
+        console.warn(
+          '[Cloud] Could not parse JSON, using text analysis fallback'
+        );
+        const lowerAnswer = answer.toLowerCase();
+        const hasPII =
+          lowerAnswer.includes('haspii": true') ||
+          lowerAnswer.includes('social security') ||
+          lowerAnswer.includes('credit card') ||
+          lowerAnswer.includes('"ssn"') ||
+          lowerAnswer.includes('pii detected');
+
+        return {
+          hasPII,
+          confidence: hasPII ? 'medium' : 'low',
+          types: hasPII ? ['ssn'] : [],
+          count: hasPII ? 1 : 0,
+        };
       }
     } catch (error) {
       console.error('[Cloud] Analysis failed:', error);

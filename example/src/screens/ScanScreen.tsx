@@ -14,6 +14,7 @@ import {
   Modal,
   Switch,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -1875,18 +1876,36 @@ Answer briefly and helpfully based on the image analysis above.`
                   }
                 />
               </View>
-              <Text
+              <View
                 style={[
                   styles.settingDescription,
+                  styles.linkContainer,
                   {
-                    color: currentTheme.colors.textSecondary,
                     backgroundColor: currentTheme.colors.backgroundSecondary,
                   },
                 ]}
               >
-                Use cloud models for higher accuracy when local detection is
-                uncertain.
-              </Text>
+                <Text style={{ color: currentTheme.colors.textSecondary }}>
+                  Use cloud models for higher accuracy when local detection is
+                  uncertain. Learn more:{' '}
+                </Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    Linking.openURL('https://github.com/aryaminus/dspy-proxy')
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.linkText,
+                      {
+                        color: currentTheme.colors.primary,
+                      },
+                    ]}
+                  >
+                    github.com/aryaminus/dspy-proxy
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {settings.allowCloud && (
@@ -2514,6 +2533,14 @@ const styles = StyleSheet.create({
   },
   headerRetryText: {
     fontSize: 16,
+  },
+  linkContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  linkText: {
+    textDecorationLine: 'underline',
   },
 });
 // Shimmer Skeleton Component for loading states

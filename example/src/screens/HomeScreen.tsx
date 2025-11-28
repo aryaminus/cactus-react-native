@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 24,
+    borderRadius: theme.borderRadius.xl,
     // backgroundColor: theme.colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -258,6 +258,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     resizeMode: 'contain',
+    borderRadius: theme.borderRadius.xl,
   },
   title: {
     fontSize: 36,

@@ -1,4 +1,18 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# ScreenSafe
+
+**Powered by Cactus**
+
+ScreenSafe is an on-device PII detection application built with React Native and Cactus. It demonstrates how to use local LLMs and vision models to protect user privacy by detecting sensitive information in images before they leave the device.
+
+## Features
+
+- **On-device PII Detection**: Uses the `lfm2-vl-450m` vision model to scan images for Personally Identifiable Information (PII).
+- **Privacy First**: All processing happens locally on the device. No data is sent to the cloud unless explicitly enabled for hybrid inference.
+- **React Native Integration**: Showcases seamless integration of Cactus with React Native.
+
+## Getting Started
+
+To get started with ScreenSafe, please refer to the [QUICKSTART.md](QUICKSTART.md) guide.
 
 # Getting Started
 

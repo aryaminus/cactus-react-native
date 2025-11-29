@@ -1,3 +1,9 @@
+# Cactus React Native (ScreenSafe Edition)
+
+**Maintained by CSS Labs**
+
+This repository contains the **Cactus** React Native library, and the **ScreenSafe** example application located in the `example/` directory.
+
 ![Cactus Logo](assets/logo.png)
 
 ## Resources

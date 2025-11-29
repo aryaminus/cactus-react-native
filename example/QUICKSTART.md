@@ -3,10 +3,10 @@
 ## Prerequisites
 - The ScreenSafe app uses the **lfm2-vl-450m** vision model from Cactus for on-device PII detection (~450MB)
 
-## 1. Setup & Install
+# 1. Setup & Install
 
 ```bash
-# 1. Clone the engine (Cactus)
+# 1. Clone the repository
 git clone git@github.com:cactus-compute/cactus-react-native.git
 cd cactus-react-native/example
 

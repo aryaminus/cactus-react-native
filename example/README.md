@@ -14,6 +14,10 @@ ScreenSafe is an on-device PII detection application built with React Native and
 
 [![ScreenSafe Demo](https://img.youtube.com/vi/X_9y1IFmMC0/0.jpg)](https://www.youtube.com/watch?v=X_9y1IFmMC0)
 
+## Download
+
+[**Download ScreenSafe v0.0.1 APK**](https://drive.google.com/file/d/1E3Ccj8x3-e17-FVp_7p7cN1QFVx6W3pE/view?usp=sharing)
+
 ## Getting Started
 
 To get started with ScreenSafe, please refer to the [QUICKSTART.md](QUICKSTART.md) guide.

@@ -1,8 +1,8 @@
-# Cactus React Native (ScreenSafe Edition)
+# ScreenSafe
 
-**Maintained by CSS Labs**
+**Powered by Cactus**
 
-This repository contains the **Cactus** React Native library, and the **ScreenSafe** example application located in the `example/` directory.
+ScreenSafe is an on-device PII detection application built with React Native and Cactus. It demonstrates how to use local LLMs and vision models to protect user privacy by detecting sensitive information in images before they leave the device.
 
 ![Cactus Logo](assets/logo.png)
 
@@ -10,9 +10,14 @@ This repository contains the **Cactus** React Native library, and the **ScreenSa
 
 [![ScreenSafe Demo](https://img.youtube.com/vi/X_9y1IFmMC0/0.jpg)](https://www.youtube.com/watch?v=X_9y1IFmMC0)
 
+## Download
+
+[**Download ScreenSafe v0.0.1 APK**](https://drive.google.com/file/d/1E3Ccj8x3-e17-FVp_7p7cN1QFVx6W3pE/view?usp=sharing)
+
 ## Resources
 
-[![cactus](https://img.shields.io/badge/cactus-000000?logo=github&logoColor=white)](https://github.com/cactus-compute/cactus) [![HuggingFace](https://img.shields.io/badge/HuggingFace-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/Cactus-Compute/models?sort=downloads) [![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/bNurx3AXTJ) [![Documentation](https://img.shields.io/badge/Documentation-4285F4?logo=googledocs&logoColor=white)](https://cactuscompute.com/docs/react-native)
+- **Cactus Engine**: This project is built on top of [Cactus](https://github.com/cactus-compute/cactus-react-native).
+- **Documentation**: [Cactus Documentation](https://cactuscompute.com/docs/react-native)
 
 ## Installation
 

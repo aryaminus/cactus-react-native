@@ -94,9 +94,9 @@ android {
         }
         release {
             storeFile file('release.keystore')
-            storePassword '$C4#eM + s@fE'
+            storePassword System.getenv("MYAPP_RELEASE_STORE_PASSWORD")
             keyAlias 'screensafe'
-            keyPassword '$C4#eM + s@fE'
+            keyPassword System.getenv("MYAPP_RELEASE_KEY_PASSWORD")
         }
     }
     buildTypes {

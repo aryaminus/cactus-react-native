@@ -643,6 +643,7 @@ If this is a nature photo or object without any personal information, state that
         });
 
         // Mark as scanned
+        scannedImagesRef.current.add(targetUri); // Immediate update to prevent race condition
         setScannedImages((prev) => new Set(prev).add(targetUri));
 
         // If this is the current image, update UI
@@ -1342,7 +1343,7 @@ Answer briefly and helpfully based on the image analysis above.`
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
-          <Text key={index} style={[baseStyle, { fontWeight: 'bold' }]}>
+          <Text key={index} style={[baseStyle, styles.boldText]}>
             {part.slice(2, -2)}
           </Text>
         );
@@ -2091,6 +2092,9 @@ Answer briefly and helpfully based on the image analysis above.`
 };
 
 const styles = StyleSheet.create({
+  boldText: {
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.backgroundSecondary,

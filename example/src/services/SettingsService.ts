@@ -11,8 +11,8 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  cloudProvider: 'openai',
-  cloudModel: 'gpt-4o-mini',
+  cloudProvider: 'gemini',
+  cloudModel: 'gemini-2.0-flash',
   cloudApiKey: '',
   cloudBaseUrl: 'https://dspy-proxy.onrender.com',
   allowCloud: false,

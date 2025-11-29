@@ -9,6 +9,16 @@ export interface PIIResult {
   }>;
 }
 
+const KNOWN_PII_TYPES = [
+  'credit_card',
+  'ssn',
+  'face',
+  'address',
+  'email',
+  'phone',
+  'id_card',
+];
+
 export class PIIDetector {
   private textLM: any; // CactusLM instance
 
@@ -40,13 +50,17 @@ Think step-by-step:
 
     Respond with ONLY valid JSON (no markdown, no code blocks). Do not use trailing commas. Ensure all string values are quoted.
     Format: {"hasPII":boolean,"confidence":"high"|"medium"|"low","types":["type1","type2"],"count":number}
+    Format: {"hasPII":boolean,"confidence":"high"|"medium"|"low","types":["type1","type2"],"count":number}
     IMPORTANT: "confidence" must be a STRING, not an object.
+    IMPORTANT: "types" must be an array of STRINGS. Do NOT use objects in the types array.
+    Example: {"hasPII":true,"confidence":"high","types":["credit_card"],"count":1}
     
     Rules:
 - If description is vague or uncertain, use "low" confidence (triggers cloud fallback)
 - Nature photos, landscapes, generic objects without visible PII = {"hasPII":false,"confidence":"high","types":[],"count":0}
 - Generic "phone" or "screen" ≠ PII unless NUMBERS are explicitly mentioned
-- "Social Security" header + numbers = SSN, regardless of OCR errors`;
+- "Social Security" header + numbers = SSN, regardless of OCR errors
+- ONLY return types from the allowed list. Do not invent new types.`;
 
     try {
       const analysisResult = await this.textLM.complete({
@@ -101,9 +115,20 @@ Think step-by-step:
 
       // Approach 2: Look for the last complete JSON object in the text
       if (!jsonString) {
+        // Look for JSON that specifically contains "hasPII"
         const jsonObjects = analysisText.match(/\{[^{}]*"hasPII"[^{}]*\}/g);
         if (jsonObjects && jsonObjects.length > 0) {
           jsonString = jsonObjects[jsonObjects.length - 1]; // Use the last one
+        } else {
+          // Try to find a larger JSON block that contains "hasPII"
+          const startIdx = analysisText.indexOf('{');
+          const endIdx = analysisText.lastIndexOf('}');
+          if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+            const candidate = analysisText.substring(startIdx, endIdx + 1);
+            if (candidate.includes('"hasPII"')) {
+              jsonString = candidate;
+            }
+          }
         }
       }
 
@@ -156,6 +181,9 @@ Think step-by-step:
                 .filter((t: string) => t.length > 0) // Remove empty strings
             : [];
 
+          // Filter types against known list
+          types = types.filter((t: string) => KNOWN_PII_TYPES.includes(t));
+
           // Handle case where types might be objects (e.g. [{"type": "ssn"}])
           if (
             Array.isArray(parsed.types) &&
@@ -163,19 +191,10 @@ Think step-by-step:
             typeof parsed.types[0] === 'object'
           ) {
             const extractedTypes: string[] = [];
-            const knownTypes = [
-              'credit_card',
-              'ssn',
-              'face',
-              'address',
-              'email',
-              'phone',
-              'id_card',
-            ];
 
             parsed.types.forEach((item: any) => {
               if (typeof item === 'string') {
-                extractedTypes.push(item);
+                if (KNOWN_PII_TYPES.includes(item)) extractedTypes.push(item);
               } else if (typeof item === 'object' && item !== null) {
                 // Try to find known types in values
                 const values = Object.values(item).flat();
@@ -183,11 +202,10 @@ Think step-by-step:
                   if (typeof val === 'string') {
                     const lowerVal = val.toLowerCase();
                     // Check if value matches a known type or contains it
-                    const match = knownTypes.find(
+                    const match = KNOWN_PII_TYPES.find(
                       (t) => lowerVal.includes(t) || t.includes(lowerVal)
                     );
                     if (match) extractedTypes.push(match);
-                    else extractedTypes.push(val); // Keep original if no match found
                   }
                 });
               }
@@ -200,9 +218,11 @@ Think step-by-step:
 
           // CRITICAL FIX: If types exist, hasPII MUST be true (prioritize types over LLM  response)
           // This fixes LLM bugs like: {"hasPII": false, "types": ["SSN"], "count": 1}
-          let hasPII = types.length > 0 || parsed.hasPII === true;
+          let hasPII = types.length > 0;
 
-          // But if hasPII=true and no types, trust types array (hasPII should be false)
+          // If LLM says hasPII=true but we found no valid types, trust our validation (hasPII = false)
+          // Exception: if confidence is high and hasPII is true, maybe we missed a type?
+          // But for safety, we should rely on the types list.
           if (types.length === 0) {
             hasPII = false;
           }

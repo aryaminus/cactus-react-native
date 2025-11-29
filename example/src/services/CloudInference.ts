@@ -43,8 +43,8 @@ export class CloudInference {
   }
 
   async configure(
-    provider: string = 'openai',
-    model: string = 'gpt-4o-mini',
+    provider: string = 'gemini',
+    model: string = 'gemini-2.0-flash',
     apiKey?: string
   ) {
     try {
@@ -170,80 +170,123 @@ Return ONLY the JSON, no other text.`;
       ); // Longer timeout for prediction (45s)
 
       if (!response.ok) {
+        // If 404, it might mean the signature is missing (server restarted). Try to register and retry.
+        if (response.status === 404) {
+          console.log(
+            '[Cloud] 404 received, attempting to re-register signature...'
+          );
+          await this.registerPIISignature();
+
+          // Retry prediction
+          const retryResponse = await this.fetchWithTimeout(
+            `${this.baseUrl}/predict`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                signature_name: 'pii_detection',
+                inputs: { description: piiQuestion },
+              }),
+            },
+            45000
+          );
+
+          if (!retryResponse.ok) {
+            throw new Error(
+              `Cloud API error: ${retryResponse.status} - Server may be sleeping on free tier`
+            );
+          }
+          // Use the retry response
+          const data = await retryResponse.json();
+          console.log('[Cloud] Raw response (retry):', data);
+
+          // ... (rest of logic needs to be duplicated or extracted? simpler to just return here and let the rest of the function handle data parsing if I can structure it right)
+          // Actually, I can't easily jump back to the main flow.
+          // Let's just return the parsed data here to be processed by the same logic?
+          // No, the logic below handles `data`.
+          // So I need to assign `data` variable.
+          // But `data` is const in the original code.
+          // I need to refactor slightly.
+          return this.processResponse(data);
+        }
+
         throw new Error(
           `Cloud API error: ${response.status} - Server may be sleeping on free tier`
         );
       }
 
       const data = await response.json();
-      console.log('[Cloud] Raw response:', data);
-
-      // Handle different response formats from your server
-      let answer = '';
-
-      if (data.pii_json) {
-        // pii_detection signature returns { pii_json: "..." } format
-        answer = data.pii_json;
-      } else if (data.answer) {
-        // qa signature returns { answer: "..." } format
-        answer = data.answer;
-      } else if (data.prediction) {
-        // If server returns { prediction: {...} } format
-        return data.prediction;
-      } else {
-        // Direct response format
-        return data;
-      }
-
-      answer = answer.trim();
-
-      // Try to extract JSON from the answer
-      try {
-        // First try: direct parse
-        return JSON.parse(answer);
-      } catch {
-        // Second try: extract JSON from markdown code blocks
-        const jsonMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-        if (jsonMatch && jsonMatch[1]) {
-          try {
-            return JSON.parse(jsonMatch[1]);
-          } catch (e) {
-            console.warn('[Cloud] Failed to parse JSON from markdown:', e);
-          }
-        }
-
-        // Third try: find JSON object in text
-        const jsonObjMatch = answer.match(/\{[^{}]*"hasPII"[^{}]*\}/);
-        if (jsonObjMatch) {
-          try {
-            return JSON.parse(jsonObjMatch[0]);
-          } catch (e) {
-            console.warn('[Cloud] Failed to parse extracted JSON:', e);
-          }
-        }
-
-        // Fallback: analyze text for PII keywords
-        console.warn(
-          '[Cloud] Could not parse JSON, using text analysis fallback'
-        );
-        const lowerAnswer = answer.toLowerCase();
-        const hasPII =
-          lowerAnswer.includes('haspii": true') ||
-          lowerAnswer.includes('social security') ||
-          lowerAnswer.includes('credit card') ||
-          lowerAnswer.includes('"ssn"') ||
-          lowerAnswer.includes('pii detected');
-
-        return {
-          hasPII,
-          confidence: hasPII ? 'medium' : 'low',
-          types: hasPII ? ['ssn'] : [],
-          count: hasPII ? 1 : 0,
-        };
-      }
+      return this.processResponse(data);
     } catch (error) {
       console.error('[Cloud] Analysis failed:', error);
       throw error;
+    }
+  }
+  private processResponse(data: any): any {
+    console.log('[Cloud] Raw response:', data);
+
+    // Handle different response formats from your server
+    let answer = '';
+
+    if (data.pii_json) {
+      // pii_detection signature returns { pii_json: "..." } format
+      answer = data.pii_json;
+    } else if (data.answer) {
+      // qa signature returns { answer: "..." } format
+      answer = data.answer;
+    } else if (data.prediction) {
+      // If server returns { prediction: {...} } format
+      return data.prediction;
+    } else {
+      // Direct response format
+      return data;
+    }
+
+    answer = answer.trim();
+
+    // Try to extract JSON from the answer
+    try {
+      // First try: direct parse
+      return JSON.parse(answer);
+    } catch {
+      // Second try: extract JSON from markdown code blocks
+      const jsonMatch = answer.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          return JSON.parse(jsonMatch[1]);
+        } catch (e) {
+          console.warn('[Cloud] Failed to parse JSON from markdown:', e);
+        }
+      }
+
+      // Third try: find JSON object in text
+      const jsonObjMatch = answer.match(/\{[^{}]*"hasPII"[^{}]*\}/);
+      if (jsonObjMatch) {
+        try {
+          return JSON.parse(jsonObjMatch[0]);
+        } catch (e) {
+          console.warn('[Cloud] Failed to parse extracted JSON:', e);
+        }
+      }
+
+      // Fallback: analyze text for PII keywords
+      console.warn(
+        '[Cloud] Could not parse JSON, using text analysis fallback'
+      );
+      const lowerAnswer = answer.toLowerCase();
+      const hasPII =
+        lowerAnswer.includes('haspii": true') ||
+        lowerAnswer.includes('social security') ||
+        lowerAnswer.includes('credit card') ||
+        lowerAnswer.includes('"ssn"') ||
+        lowerAnswer.includes('pii detected');
+
+      return {
+        hasPII,
+        confidence: hasPII ? 'medium' : 'low',
+        types: hasPII ? ['ssn'] : [],
+        count: hasPII ? 1 : 0,
+      };
     }
   }
 }

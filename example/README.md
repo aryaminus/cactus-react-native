@@ -10,6 +10,10 @@ ScreenSafe is an on-device PII detection application built with React Native and
 - **Privacy First**: All processing happens locally on the device. No data is sent to the cloud unless explicitly enabled for hybrid inference.
 - **React Native Integration**: Showcases seamless integration of Cactus with React Native.
 
+## Demo
+
+[![ScreenSafe Demo](https://img.youtube.com/vi/X_9y1IFmMC0/0.jpg)](https://www.youtube.com/watch?v=X_9y1IFmMC0)
+
 ## Getting Started
 
 To get started with ScreenSafe, please refer to the [QUICKSTART.md](QUICKSTART.md) guide.

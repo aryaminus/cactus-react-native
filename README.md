@@ -6,6 +6,10 @@ This repository contains the **Cactus** React Native library, and the **ScreenSa
 
 ![Cactus Logo](assets/logo.png)
 
+## Demo
+
+[![ScreenSafe Demo](https://img.youtube.com/vi/X_9y1IFmMC0/0.jpg)](https://www.youtube.com/watch?v=X_9y1IFmMC0)
+
 ## Resources
 
 [![cactus](https://img.shields.io/badge/cactus-000000?logo=github&logoColor=white)](https://github.com/cactus-compute/cactus) [![HuggingFace](https://img.shields.io/badge/HuggingFace-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/Cactus-Compute/models?sort=downloads) [![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/bNurx3AXTJ) [![Documentation](https://img.shields.io/badge/Documentation-4285F4?logo=googledocs&logoColor=white)](https://cactuscompute.com/docs/react-native)
